@@ -1,0 +1,86 @@
+version: '3'
+services:
+
+  #
+  # Microservices
+  #
+
+  api-gateway:
+    build:
+      context: ./microservices/api-gateway
+    image: api-gateway-micro
+    command: sh -c "npm run start"
+    ports:
+      - '${API_GATEWAY_PORT_EXT:-3000}:3000'
+    env_file:
+      - ./microservices/api-gateway/.env
+    depends_on:
+      - rabbit
+      - redis
+
+  auth:
+    build:
+      context: ./microservices/auth
+    image: auth-micro
+    command: sh -c "npm run start"
+    env_file:
+      - ./microservices/auth/.env
+    depends_on:
+      - redis
+      - rabbit
+      - postgres
+      - elasticsearch
+
+#  storage:
+#      image: auth-micro
+#      command: sh -c "npm run start"
+#      env_file:
+#        - ./microservices/storage/.env
+
+  # Temporary disabled microservice
+  # email:
+  #   image: email-micro
+  #   command: sh -c "npm run start"
+  #   env_file:
+  #     - ./microservices/email/.env
+
+  #
+  # Services
+  #
+
+  elasticsearch:
+    image: elasticsearch:6.7.2
+    ports:
+    - '${ELASTIC_PORT_EXT:-9200}:9200'
+    volumes:
+    - ./volumes/elastic:/usr/share/elasticsearch/data
+
+  rabbit:
+    image: rabbitmq:3-management
+    hostname: "rabbit"
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "MONOREPATEMPLATE"
+
+  redis:
+    image: redis:4.0-alpine
+    environment:
+    # ALLOW_EMPTY_PASSWORD is recommended only for development.
+    - ALLOW_EMPTY_PASSWORD=yes
+    - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
+    volumes:
+    - ./volumes/redis_data:/data
+
+  postgres:
+    image: postgres:9.6-alpine
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - '${POSTGRES_PORT_EXT:-5432}:5432'
+    volumes:
+    - ./initdb.d:/docker-entrypoint-initdb.d:ro
+    - ./volumes/postgres:/var/lib/postgresql/data
+
+volumes:
+  redis_data:
+    driver: local

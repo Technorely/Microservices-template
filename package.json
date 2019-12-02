@@ -1,0 +1,45 @@
+{
+  "name": "template-microservices-monorepo",
+  "version": "1.0.0",
+  "repository": "https://github.com/Technorely/Microservices-template.git",
+  "description": "This is a monorepo that contains microservices git submodules",
+  "homepage": "https://github.com/Technorely/Microservices-template.git#readme",
+  "author": "technorely",
+  "engines": {
+    "node": "^10.15.3"
+  },
+  "scripts": {
+    "start:local": "yarn start:api-gateway & yarn start:auth & yarn start:email & yarn start:storage",
+    "start:api-gateway": "cd ./microservices/api-gateway && yarn start:dev",
+    "start:auth": "cd ./microservices/auth && yarn start:dev",
+    "start:email": "cd ./microservices/email && yarn start:dev",
+    "start:storage": "cd ./microservices/storage && yarn start:dev"
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS",
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "**/*.{ts,js,json,md}": [
+      "prettier --write",
+      "git add"
+    ],
+    "**/*.ts": [
+      "tslint --fix --config tslint.json",
+      "git add"
+    ]
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^7.6.1",
+    "@commitlint/config-conventional": "^7.6.0",
+    "conventional-changelog-eslint": "3.0.0",
+    "husky": "1.1.0",
+    "lint-staged": "7.3.0",
+    "prettier": "1.14.3",
+    "tslint": "5.11.0",
+    "typescript": "3.4.2"
+  },
+  "license": "MIT"
+}

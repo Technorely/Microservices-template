@@ -1,0 +1,136 @@
+version: '3'
+services:
+
+  #
+  # Microservices
+  #
+
+  api-gateway:
+    build:
+      context: ./microservices/api-gateway
+    image: api-gateway-micro
+    container_name: api-gateway-container
+    command: sh -c "yarn && npm run start:dev"
+    volumes:
+      - ./microservices/api-gateway:/app
+    ports:
+      - '${API_GATEWAY_PORT_EXT:-3000}:3000'
+      - '${API_GATEWAY_PORT_DEBUG:-9229}:9229'
+    env_file:
+      - ./microservices/api-gateway/.env
+    depends_on:
+      - rabbit
+      - redis
+
+  auth:
+    build:
+      context: ./microservices/auth
+    image: auth-micro
+    command: sh -c "yarn && npm run start:debug"
+    container_name: auth-container
+    ports:
+      - '${AUTH_PORT_DEBUG:-9230}:9230'
+    environment:
+       - DEBUG_PORT=9230
+    volumes:
+      - ./microservices/auth:/app
+    env_file:
+      - ./microservices/auth/.env
+    depends_on:
+      - redis
+      - rabbit
+      - postgres
+      - elasticsearch
+
+#  storage:
+#      build:
+#        context: ./microservices/storage
+#      image: auth-micro
+#      container_name: storage-container
+#      command: sh -c "yarn && npm run start:dev"
+#  #    ports:
+#  #      - '${STORAGE_PORT_DEBUG:-9233}:9233'
+#  #    environment:
+#  #      - DEBUG_PORT=9233
+#      volumes:
+#        - ./microservices/storage:/app
+#      env_file:
+#        - ./microservices/storage/.env
+
+  # Temporary disabled microservice
+  # email:
+  #   build:
+  #     context: ./microservices/email
+  #   image: email-micro
+  #   container_name: email-container
+  #   command: sh -c "yarn && npm run start:dev"
+  #   volumes:
+  #     - ./microservices/email:/app
+  #   env_file:
+  #     - ./microservices/email/.env
+  #    ports:
+  #      - '${EMAIL_PORT_DEBUG:-9232}:9232'
+  #    environment:
+  #      - DEBUG_PORT=9232
+
+  #
+  # Services
+  #
+
+  elasticsearch:
+    image: elasticsearch:6.7.2
+    container_name: elasticsearch-container
+    ports:
+    - '${ELASTIC_PORT_EXT:-9200}:9200'
+    - '${ELASTIC_PORT_EXT_2:-9300}:9300'
+
+  rabbit:
+    image: rabbitmq:3-management
+    container_name: rabbit-container
+    hostname: "rabbit"
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "MONOREPATEMPLATE"
+    ports:
+      - "${RABBIT_PORT_EXT_2:-15672}:15672"
+      - "${RABBIT_PORT_EXT:-5672}:5672"
+
+  redis:
+    image: redis:4.0-alpine
+    container_name: redis-container
+    environment:
+    # ALLOW_EMPTY_PASSWORD is recommended only for development.
+    - ALLOW_EMPTY_PASSWORD=yes
+    - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
+    ports:
+    - '${REDIS_PORT_EXT:-6379}:6379'
+    volumes:
+    - './volumes/redis_data:/data'
+
+  postgres:
+    image: postgres:9.6-alpine
+    container_name: postgres-container
+    restart: always
+    ports:
+      - '${POSTGRES_PORT_EXT:-5432}:5432'
+    volumes:
+    - ./initdb.d:/docker-entrypoint-initdb.d:ro
+    - ./volumes/postgres:/var/lib/postgresql/data
+
+  pgadmin:
+    container_name: pgadmin-container
+    image: dpage/pgadmin4
+    logging:
+      driver: none
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    volumes:
+      - ./volumes/pgadmin:/root/.pgadmin
+      - ./volumes/pgadmin/config:/var/lib/pgadmin
+    ports:
+      - "${PGADMIN_PORT_EXT:-8080}:80"
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+    driver: local
